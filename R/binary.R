@@ -271,8 +271,17 @@ binary <- function(id) {
                         method = input$method,
                         level = input$conf_level)
             
-            pred <- predict(model, level = input$conf_level, addpred = TRUE)
-            rv$results <- list(model = model, pred = pred, type = "standard")
+            # Calculate prediction interval manually
+            k <- length(rv$analysis_data$e_treat)
+            pi_factor <- qt(0.975, k-1)
+            pi_lb <- model$beta - pi_factor * sqrt(model$tau2 + model$se^2)
+            pi_ub <- model$beta + pi_factor * sqrt(model$tau2 + model$se^2)
+            
+            rv$results <- list(
+              model = model, 
+              pi = list(lb = pi_lb, ub = pi_ub),
+              type = "standard"
+            )
           }
         }
       }, error = function(e) {
@@ -330,8 +339,7 @@ binary <- function(id) {
             )
           )
         } else {
-          # Calculate prediction interval for random effects model
-          pred <- predict(model, level = 0.95)
+          # Use manually calculated prediction interval
           summary_data <- data.frame(
             Measure = c("Odds Ratio", "95% CI", "95% PI", "p-value", "τ²"),
             Value = c(
@@ -340,8 +348,8 @@ binary <- function(id) {
                       exp(model$ci.lb),
                       exp(model$ci.ub)),
               sprintf("%.3f to %.3f",
-                      exp(pred$pi.lb),
-                      exp(pred$pi.ub)),
+                      exp(rv$results$pi$lb),
+                      exp(rv$results$pi$ub)),
               sprintf("%.4f", model$pval),
               sprintf("%.3f", model$tau2)
             )
@@ -363,43 +371,25 @@ binary <- function(id) {
       
       model <- rv$results$model
       
-      # Common forest plot parameters
-      common_params <- list(
-        slab = rv$analysis_data$study,
-        ilab = cbind(
-          paste(rv$analysis_data$e_treat, "/", rv$analysis_data$n_treat),
-          paste(rv$analysis_data$e_ctrl, "/", rv$analysis_data$n_ctrl)
-        ),
-        ilab.xpos = c(-10, -6),
-        ilab.pos = 2,
-        header = TRUE,
-        xlim = c(-16, 10),
-        alim = c(0.1, 10),
-        at = log(c(0.1, 0.2, 0.5, 1, 2, 5, 10)),
-        steps = 5,
-        refline = log(1),
-        level = input$conf_level,
-        xlab = "Odds Ratio (log scale)",
-        cex = 0.8,
-        efac = 1.5,
-        pch = 15,
-        col = "darkblue",
-        border = "darkblue",
-        shade = "zebra",
-        colshade = "gray95",
-        showweights = TRUE,
-        annosym = c(" [", ", ", "]", "\u2212", "\u2002"),  # Proper minus sign and spacing
-        digits = c(2, 1),  # 2 decimals for effect sizes, 1 for weights
-        top = 3,  # Space at top for headers
-        mar = c(5, 4, 2, 2) + 0.1  # Margins for better spacing
-      )
-      
       if (rv$results$type == "logistic") {
-        do.call(forest, c(list(
-          x = model,
+        forest(model,
           mlab = paste0("Random Effects Logistic Regression (k = ", model$k, ")"),
-          addpred = FALSE
-        ), common_params))
+          slab = rv$analysis_data$study,
+          ilab = cbind(
+            paste(rv$analysis_data$e_treat, "/", rv$analysis_data$n_treat),
+            paste(rv$analysis_data$e_ctrl, "/", rv$analysis_data$n_ctrl)
+          ),
+          ilab.xpos = c(-10, -6),
+          ilab.pos = 2,
+          header = TRUE,
+          xlim = c(-16, 10),
+          atransf = exp,
+          refline = 1,
+          level = input$conf_level,
+          xlab = "Odds Ratio",
+          cex = 0.8,
+          showweights = TRUE
+        )
         
         # Add column headers
         text(c(-10, -6), model$k + 2, 
@@ -407,11 +397,24 @@ binary <- function(id) {
              cex = 0.8, font = 2)
              
       } else if (rv$results$type == "mh_no_correction") {
-        do.call(forest, c(list(
-          x = model,
+        forest(model,
           mlab = paste0("Mantel-Haenszel Model (k = ", model$k, ")"),
-          addpred = FALSE
-        ), common_params))
+          slab = rv$analysis_data$study,
+          ilab = cbind(
+            paste(rv$analysis_data$e_treat, "/", rv$analysis_data$n_treat),
+            paste(rv$analysis_data$e_ctrl, "/", rv$analysis_data$n_ctrl)
+          ),
+          ilab.xpos = c(-10, -6),
+          ilab.pos = 2,
+          header = TRUE,
+          xlim = c(-16, 10),
+          atransf = exp,
+          refline = 1,
+          level = input$conf_level,
+          xlab = "Odds Ratio",
+          cex = 0.8,
+          showweights = TRUE
+        )
         
         # Add column headers
         text(c(-10, -6), model$k + 2,
@@ -421,20 +424,47 @@ binary <- function(id) {
       } else {
         # For standard meta-analysis
         if (input$method == "FE") {
-          do.call(forest, c(list(
-            x = model,
+          forest(model,
             mlab = paste0("Fixed Effect Model (k = ", model$k, ")"),
-            addpred = FALSE
-          ), common_params))
+            slab = rv$analysis_data$study,
+            ilab = cbind(
+              paste(rv$analysis_data$e_treat, "/", rv$analysis_data$n_treat),
+              paste(rv$analysis_data$e_ctrl, "/", rv$analysis_data$n_ctrl)
+            ),
+            ilab.xpos = c(-10, -6),
+            ilab.pos = 2,
+            header = TRUE,
+            xlim = c(-16, 10),
+            atransf = exp,
+            refline = 1,
+            level = input$conf_level,
+            xlab = "Odds Ratio",
+            cex = 0.8,
+            showweights = TRUE
+          )
           
         } else {
           # Random effects model with prediction interval
-          do.call(forest, c(list(
-            x = model,
+          forest(model,
             mlab = paste0("Random Effects Model (k = ", model$k, ")"),
             addpred = TRUE,
-            predstyle = "shade"  # Show prediction distribution
-          ), common_params))
+            predstyle = "bar",
+            slab = rv$analysis_data$study,
+            ilab = cbind(
+              paste(rv$analysis_data$e_treat, "/", rv$analysis_data$n_treat),
+              paste(rv$analysis_data$e_ctrl, "/", rv$analysis_data$n_ctrl)
+            ),
+            ilab.xpos = c(-10, -6),
+            ilab.pos = 2,
+            header = TRUE,
+            xlim = c(-16, 10),
+            atransf = exp,
+            refline = 1,
+            level = input$conf_level,
+            xlab = "Odds Ratio",
+            cex = 0.8,
+            showweights = TRUE
+          )
         }
         
         # Add column headers
