@@ -1,11 +1,11 @@
-study,e_treat,n_treat,e_ctrl,n_ctrl
-"Study 1",15,100,10,100
-"Study 2",12,80,8,80
-"Study 3",18,120,12,120
-"Study 4",25,150,15,150
-"Study 5",8,60,5,60
-"Study 6",20,110,14,110
-"Study 7",16,90,11,90
-"Study 8",22,130,16,130
-"Study 9",14,85,9,85
-"Study 10",19,105,13,105
+study,year,e_treat,n_treat,e_ctrl,n_ctrl,subgroup,region
+Study 1,2015,15,50,10,50,Age ≥65,Asia
+Study 2,2016,12,45,8,45,Age ≥65,Europe
+Study 3,2017,10,40,5,40,Age ≥65,North America
+Study 4,2018,18,55,12,55,Age ≥65,Europe
+Study 5,2019,20,60,15,60,Age ≥65,Asia
+Study 6,2020,14,48,9,48,Age <65,Europe
+Study 7,2021,16,52,11,52,Age <65,Asia
+Study 8,2022,19,58,14,58,Age <65,North America
+Study 9,2023,11,42,6,42,Age <65,Europe
+Study 10,2024,13,46,8,46,Age <65,Asia

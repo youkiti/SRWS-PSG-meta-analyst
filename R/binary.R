@@ -50,7 +50,9 @@ binaryUI <- function(id) {
         status = "info",
         
         selectInput(ns("effect_measure"), "Effect Measure",
-                   choices = BINARY_MEASURES),
+                   choices = c("Risk Ratio" = "RR",
+                             "Odds Ratio" = "OR",
+                             "Risk Difference" = "RD")),
         
         # Analysis method selection
         uiOutput(ns("method_ui")),
@@ -99,6 +101,22 @@ binaryUI <- function(id) {
         title = "Heterogeneity",
         status = "warning",
         tableOutput(ns("heterogeneity_table"))
+      )
+    ),
+    
+    fluidRow(
+      box(
+        width = 12,
+        title = "Subgroup Forest Plot",
+        status = "primary",
+        selectInput(ns("subgroup_col"), "Subgroup Column", choices = NULL),
+        actionButton(ns("create_subgroup"), "Create Subgroup Plot", 
+                    icon = icon("chart-bar"), 
+                    class = "btn-primary"),
+        plotOutput(ns("subgroup_forest_plot"), height = "600px"),
+        div(style = "text-align: right;",
+            downloadButton(ns("download_subgroup_svg"), "Download SVG"),
+            downloadButton(ns("download_subgroup_pdf"), "Download PDF"))
       )
     )
   )
@@ -154,6 +172,7 @@ binary <- function(id) {
       updateSelectInput(session, "n_treat_col", choices = names(data))
       updateSelectInput(session, "e_ctrl_col", choices = names(data))
       updateSelectInput(session, "n_ctrl_col", choices = names(data))
+      updateSelectInput(session, "subgroup_col", choices = c("", names(data)))
       
       # Set default column selections if sample data is detected
       if (all(c("study", "e_treat", "n_treat", "e_ctrl", "n_ctrl") %in% names(data))) {
@@ -212,13 +231,15 @@ binary <- function(id) {
       )
       
       # Create data frame with standardized column names
-      rv$analysis_data <- data.frame(
+      analysis_data <- data.frame(
         study = rv$data[[input$study_col]],
         e_treat = as.numeric(rv$data[[selected_cols["e_treat"]]]),
         n_treat = as.numeric(rv$data[[selected_cols["n_treat"]]]),
         e_ctrl = as.numeric(rv$data[[selected_cols["e_ctrl"]]]),
         n_ctrl = as.numeric(rv$data[[selected_cols["n_ctrl"]]])
       )
+      
+      rv$analysis_data <- analysis_data
       
       # Check for zeros in the data
       has_zeros <- any(rv$analysis_data$e_treat == 0 | rv$analysis_data$e_ctrl == 0)
@@ -262,24 +283,26 @@ binary <- function(id) {
             )
             rv$results <- list(model = model, type = "mh_no_correction")
           } else {
-            # Standard random effects model
-            model <- rma(measure = "OR",
-                        ai = rv$analysis_data$e_treat,
-                        bi = rv$analysis_data$n_treat - rv$analysis_data$e_treat,
-                        ci = rv$analysis_data$e_ctrl,
-                        di = rv$analysis_data$n_ctrl - rv$analysis_data$e_ctrl,
-                        method = input$method,
-                        level = input$conf_level)
-            
-            # Calculate prediction interval manually
-            k <- length(rv$analysis_data$e_treat)
-            pi_factor <- qt(0.975, k-1)
-            pi_lb <- model$beta - pi_factor * sqrt(model$tau2 + model$se^2)
-            pi_ub <- model$beta + pi_factor * sqrt(model$tau2 + model$se^2)
+            # Standard meta-analysis using metabin
+            model <- metabin(
+              event.e = rv$analysis_data$e_treat,
+              n.e = rv$analysis_data$n_treat,
+              event.c = rv$analysis_data$e_ctrl,
+              n.c = rv$analysis_data$n_ctrl,
+              studlab = rv$analysis_data$study,
+              sm = input$effect_measure,  # Effect measure (RR, OR, etc.)
+              method.tau = "REML",  # REML method for τ²
+              method.random.ci = "HK",  # Hartung-Knapp adjustment
+              prediction = TRUE,  # Add prediction interval
+              level = input$conf_level,
+              level.predict = input$conf_level,
+              method = ifelse(input$method == "FE", "Inverse", "Inverse"),
+              fixed = input$method == "FE",
+              random = input$method != "FE"
+            )
             
             rv$results <- list(
-              model = model, 
-              pi = list(lb = pi_lb, ub = pi_ub),
+              model = model,
               type = "standard"
             )
           }
@@ -296,66 +319,101 @@ binary <- function(id) {
     output$results_table <- renderDT({
       req(rv$results)
       
-      if (rv$results$type == "logistic") {
-        # Logistic regression results
-        model <- rv$results$model
-        summary_data <- data.frame(
-          Measure = c("Odds Ratio", "95% CI", "p-value"),
-          Value = c(
-            sprintf("%.3f", exp(model$b[2])),  # intervention effect
-            sprintf("%.3f to %.3f", 
-                    exp(model$ci.lb[2]),
-                    exp(model$ci.ub[2])),
-            sprintf("%.4f", model$pval[2])
-          )
-        )
-      } else if (rv$results$type == "mh_no_correction") {
-        # MH model results
-        model <- rv$results$model
-        summary_data <- data.frame(
-          Measure = c("Odds Ratio", "95% CI", "p-value"),
-          Value = c(
-            sprintf("%.3f", exp(model$TE.fixed)),
-            sprintf("%.3f to %.3f", 
-                    exp(model$lower.fixed),
-                    exp(model$upper.fixed)),
-            sprintf("%.4f", model$pval.fixed)
-          )
-        )
-      } else {
-        # Standard meta-analysis results
-        model <- rv$results$model
-        
-        # Create summary data frame
-        if (input$method == "FE") {
-          summary_data <- data.frame(
-            Measure = c("Odds Ratio", "95% CI", "p-value"),
+      summary_data <- tryCatch({
+        if (rv$results$type == "logistic" && !is.null(rv$results$model)) {
+          # Logistic regression results
+          model <- rv$results$model
+          if (!is.null(model$b) && !is.null(model$ci.lb) && !is.null(model$ci.ub) && !is.null(model$pval) &&
+              length(model$b) >= 2 && length(model$ci.lb) >= 2 && length(model$ci.ub) >= 2 && length(model$pval) >= 2) {
+            data.frame(
+              Measure = c(
+                switch(input$effect_measure,
+                       "RR" = "Risk Ratio",
+                       "OR" = "Odds Ratio",
+                       "RD" = "Risk Difference"),
+                "95% CI", "p-value"),
+              Value = c(
+                sprintf("%.3f", exp(as.numeric(model$b[2]))),  # intervention effect
+                sprintf("%.3f to %.3f", 
+                        exp(as.numeric(model$ci.lb[2])),
+                        exp(as.numeric(model$ci.ub[2]))),
+                sprintf("%.4f", as.numeric(model$pval[2]))
+              )
+            )
+          } else {
+            data.frame(
+              Measure = "Status",
+              Value = "Model estimation failed: incomplete results"
+            )
+          }
+        } else if (rv$results$type == "mh_no_correction") {
+          # MH model results
+          model <- rv$results$model
+          data.frame(
+              Measure = c(
+                switch(input$effect_measure,
+                       "RR" = "Risk Ratio",
+                       "OR" = "Odds Ratio",
+                       "RD" = "Risk Difference"),
+                "95% CI", "p-value"),
             Value = c(
-              sprintf("%.3f", exp(model$beta)),
-              sprintf("%.3f to %.3f", 
-                      exp(model$ci.lb),
-                      exp(model$ci.ub)),
-              sprintf("%.4f", model$pval)
+                sprintf("%.3f", if(input$effect_measure == "RD") model$TE.fixed else exp(model$TE.fixed)),
+                sprintf("%.3f to %.3f", 
+                        if(input$effect_measure == "RD") model$lower.fixed else exp(model$lower.fixed),
+                        if(input$effect_measure == "RD") model$upper.fixed else exp(model$upper.fixed)),
+              sprintf("%.4f", model$pval.fixed)
             )
           )
         } else {
-          # Use manually calculated prediction interval
-          summary_data <- data.frame(
-            Measure = c("Odds Ratio", "95% CI", "95% PI", "p-value", "τ²"),
-            Value = c(
-              sprintf("%.3f", exp(model$beta)),
-              sprintf("%.3f to %.3f", 
-                      exp(model$ci.lb),
-                      exp(model$ci.ub)),
-              sprintf("%.3f to %.3f",
-                      exp(rv$results$pi$lb),
-                      exp(rv$results$pi$ub)),
-              sprintf("%.4f", model$pval),
-              sprintf("%.3f", model$tau2)
+          # Standard meta-analysis results
+          model <- rv$results$model
+          
+          # Create summary data frame
+          if (input$method == "FE") {
+            data.frame(
+              Measure = c(
+                switch(input$effect_measure,
+                       "RR" = "Risk Ratio",
+                       "OR" = "Odds Ratio",
+                       "RD" = "Risk Difference"),
+                "95% CI", "p-value"),
+              Value = c(
+                sprintf("%.3f", exp(model$TE.fixed)),
+                sprintf("%.3f to %.3f", 
+                        exp(model$lower.fixed),
+                        exp(model$upper.fixed)),
+                sprintf("%.4f", model$pval.fixed)
+              )
             )
-          )
+          } else {
+            # Random effects results
+            data.frame(
+              Measure = c(
+                switch(input$effect_measure,
+                       "RR" = "Risk Ratio",
+                       "OR" = "Odds Ratio",
+                       "RD" = "Risk Difference"),
+                "95% CI", "95% PI", "p-value", "τ²"),
+              Value = c(
+                sprintf("%.3f", if(input$effect_measure == "RD") model$TE.random else exp(model$TE.random)),
+                sprintf("%.3f to %.3f", 
+                        if(input$effect_measure == "RD") model$lower.random else exp(model$lower.random),
+                        if(input$effect_measure == "RD") model$upper.random else exp(model$upper.random)),
+                sprintf("%.3f to %.3f",
+                        if(input$effect_measure == "RD") model$lower.predict else exp(model$lower.predict),
+                        if(input$effect_measure == "RD") model$upper.predict else exp(model$upper.predict)),
+                sprintf("%.4f", model$pval.random),
+                sprintf("%.3f", model$tau2)
+              )
+            )
+          }
         }
-      }
+      }, error = function(e) {
+        data.frame(
+          Measure = "Status",
+          Value = "Error calculating results"
+        )
+      })
       
       datatable(summary_data,
                 options = list(dom = 't',
@@ -422,66 +480,22 @@ binary <- function(id) {
              cex = 0.8, font = 2)
              
       } else {
-        # For standard meta-analysis
-        if (input$method == "FE") {
-          forest(model,
-            mlab = paste0("Fixed Effect Model (k = ", model$k, ")"),
-            slab = rv$analysis_data$study,
-            ilab = cbind(
-              paste(rv$analysis_data$e_treat, "/", rv$analysis_data$n_treat),
-              paste(rv$analysis_data$e_ctrl, "/", rv$analysis_data$n_ctrl)
-            ),
-            ilab.xpos = c(-10, -6),
-            ilab.pos = 2,
-            header = TRUE,
-            xlim = c(-16, 10),
-            atransf = exp,
-            refline = 1,
-            level = input$conf_level,
-            xlab = "Odds Ratio",
-            cex = 0.8,
-            showweights = TRUE
-          )
-          
-        } else {
-          # Random effects model with prediction interval
-          forest(model,
-            mlab = paste0("Random Effects Model (k = ", model$k, ")"),
-            addpred = TRUE,
-            predstyle = "bar",
-            slab = rv$analysis_data$study,
-            ilab = cbind(
-              paste(rv$analysis_data$e_treat, "/", rv$analysis_data$n_treat),
-              paste(rv$analysis_data$e_ctrl, "/", rv$analysis_data$n_ctrl)
-            ),
-            ilab.xpos = c(-10, -6),
-            ilab.pos = 2,
-            header = TRUE,
-            xlim = c(-16, 10),
-            atransf = exp,
-            refline = 1,
-            level = input$conf_level,
-            xlab = "Odds Ratio",
-            cex = 0.8,
-            showweights = TRUE
-          )
-        }
-        
-        # Add column headers
-        text(c(-10, -6), model$k + 2,
-             c("Treatment\nEvents/Total", "Control\nEvents/Total"),
-             cex = 0.8, font = 2)
+        # Forest plot for meta-analysis using meta package
+        forest(model,
+          layout = "RevMan5",
+          prediction = input$method != "FE"
+        )
         
         # Add heterogeneity statistics
         if (input$method != "FE") {
           text(-16, -2, pos = 4, cex = 0.8, font = 3, bquote(paste(
             "Heterogeneity: ",
-            "Q = ", .(sprintf("%.2f", model$QE)), ", ",
-            "df = ", .(model$k - 1), ", ",
-            "p ", .(sprintf("%.3f", model$QEp)), "; ",
+            "Q = ", .(sprintf("%.2f", model$Q)), ", ",
+            "df = ", .(model$k - 1), ", ",  # あるいは model$df.Q が定義されていればそちらを使う
+            "p ", .(sprintf("%.3f", model$pval.Q)), "; ",
             I^2, " = ", .(sprintf("%.1f", model$I2)), "%, ",
             tau^2, " = ", .(sprintf("%.3f", model$tau2))
-          )))
+          )))  # あるいは model$tau2 が定義されていればそちらを使う
         }
       }
     }
@@ -491,13 +505,90 @@ binary <- function(id) {
       req(rv$results)
       
       if (rv$results$type == "logistic") {
+        # Create an empty plot first
         plot.new()
+        plot.window(xlim = c(0, 1), ylim = c(0, 1))
         text(0.5, 0.5, "Funnel plot not applicable\nfor logistic regression model",
              cex = 1.2, col = "darkgray")
-      } else if (rv$results$type == "mh_no_correction") {
-        funnel(rv$results$model)
       } else {
+        # Create funnel plot
         funnel(rv$results$model)
+        
+        # Add Egger's test
+        if (!is.null(rv$results$model)) {
+          # Get number of studies
+          k <- if (rv$results$type == "standard") {
+            rv$results$model$k
+          } else if (rv$results$type == "mh_no_correction") {
+            length(rv$results$model$TE)
+          } else {
+            0
+          }
+          
+          if (k >= 3) {  # Minimum studies needed for Egger's test
+            tryCatch({
+              # For binary outcomes, convert to metagen object first
+              if (rv$results$type == "standard") {
+                # Create metagen object from binary data
+                m.gen <- metagen(TE = rv$results$model$TE,
+                               seTE = rv$results$model$seTE,
+                               studlab = rv$results$model$studlab,
+                               sm = input$effect_measure,
+                               fixed = input$method == "FE",
+                               random = input$method != "FE",
+                               method.tau = "REML",
+                               method.random.ci = "HK")
+                
+                # Perform bias test on metagen object
+                bias_test <- metabias(m.gen, 
+                                    method.bias = "linreg",
+                                    k.min = 3)
+                
+                # Add test results to plot
+                legend("topright",
+                      title = "Egger's Test",
+                      legend = c(
+                        sprintf("p = %.3f", max(0.001, bias_test$p.value))
+                      ),
+                      bty = "n",
+                      cex = 0.8,
+                      text.col = "darkblue")
+              } else {
+                # For non-standard models (e.g., MH without correction),
+                # use standard Egger's test as fallback
+                bias_test <- metabias(rv$results$model,
+                                    method.bias = "linreg")
+                
+                legend("topright",
+                      title = "Egger's Test",
+                      legend = c(
+                        sprintf("p = %.3f", max(0.001, bias_test$p.value))
+                      ),
+                      bty = "n",
+                      cex = 0.8,
+                      text.col = "darkblue")
+              }
+            }, error = function(e) {
+              # More informative error message
+              legend("topright",
+                    title = "Publication Bias Test",
+                    legend = paste("Could not calculate:",
+                                 "insufficient data or",
+                                 "variance structure"),
+                    bty = "n",
+                    cex = 0.8,
+                    text.col = "darkred")
+            })
+          } else {
+            # Show message when insufficient studies
+            legend("topright",
+                   title = "Egger's Test",
+                   legend = "Not applicable\n(< 3 studies)",
+                   bty = "n",
+                   cex = 0.8,
+                   text.col = "darkred")
+          }
+        }
       }
     }
     
@@ -560,41 +651,62 @@ binary <- function(id) {
     output$heterogeneity_table <- renderTable({
       req(rv$results)
       
-      if (rv$results$type == "logistic") {
-        data.frame(
-          Statistic = c("τ² (Random Effects)"),
-          Value = sprintf("%.3f", rv$results$model$tau2)
-        )
-      } else if (rv$results$type == "mh_no_correction") {
-        data.frame(
-          Statistic = c("Q statistic", "Q p-value"),
-          Value = c(
-            sprintf("%.2f", rv$results$model$Q),
-            sprintf("%.4f", rv$results$model$pval.Q)
-          )
-        )
-      } else {
-        if (input$method == "FE") {
+      tryCatch({
+        if (rv$results$type == "logistic" && !is.null(rv$results$model)) {
+          if (!is.null(rv$results$model$tau2) && is.numeric(rv$results$model$tau2)) {
+            data.frame(
+              Statistic = c("Q statistic", "τ²", "τ", "I²"),
+              Value = c(
+                sprintf("%.2f", rv$results$model$QE),
+                sprintf("%.3f", rv$results$model$tau2),
+                sprintf("%.3f", sqrt(rv$results$model$tau2)),
+                sprintf("%.1f%%", rv$results$model$I2)
+              )
+            )
+          } else {
+            data.frame(
+              Statistic = c("Status"),
+              Value = c("Heterogeneity calculation failed")
+            )
+          }
+        } else if (rv$results$type == "mh_no_correction") {
           data.frame(
-            Statistic = c("Q statistic", "Q p-value"),
+            Statistic = c("Q statistic", "Q p-value", "I²"),
             Value = c(
-              sprintf("%.2f", rv$results$model$QE),
-              sprintf("%.4f", rv$results$model$QEp)
+              sprintf("%.2f", rv$results$model$Q),
+              sprintf("%.4f", rv$results$model$pval.Q),
+              sprintf("%.1f%%", rv$results$model$I2)
             )
           )
         } else {
-          data.frame(
-            Statistic = c("τ²", "I²", "H²", "Q statistic", "Q p-value"),
-            Value = c(
-              sprintf("%.3f", rv$results$model$tau2),
-              sprintf("%.1f%%", rv$results$model$I2),
-              sprintf("%.2f", rv$results$model$H2),
-              sprintf("%.2f", rv$results$model$QE),
-              sprintf("%.4f", rv$results$model$QEp)
+          if (input$method == "FE") {
+            data.frame(
+              Statistic = c("Q statistic", "Q p-value", "I²"),
+              Value = c(
+                sprintf("%.2f", rv$results$model$Q),
+                sprintf("%.4f", rv$results$model$pval.Q),
+                sprintf("%.1f%%", rv$results$model$I2)
+              )
             )
-          )
+          } else {
+            data.frame(
+              Statistic = c("Q statistic", "Q p-value", "τ²", "τ", "I²"),
+              Value = c(
+                sprintf("%.2f", rv$results$model$Q),
+                sprintf("%.4f", rv$results$model$pval.Q),
+                sprintf("%.3f", rv$results$model$tau2),
+                sprintf("%.3f", sqrt(rv$results$model$tau2)),
+                sprintf("%.1f%%", rv$results$model$I2)
+              )
+            )
+          }
         }
-      }
+      }, error = function(e) {
+        data.frame(
+          Statistic = c("Status"),
+          Value = c("Error calculating heterogeneity statistics")
+        )
+      })
     })
     
     # Sample data download handler
@@ -604,6 +716,68 @@ binary <- function(id) {
       },
       content = function(file) {
         file.copy("sample_data/binary.csv", file)
+      }
+    )
+    
+    # Create subgroup forest plot
+    create_subgroup_plot <- function() {
+      req(rv$results, input$subgroup_col, input$subgroup_col != "")
+      
+      # Add subgroup to analysis data
+      analysis_data <- rv$analysis_data
+      analysis_data$subgroup <- rv$data[[input$subgroup_col]]
+      
+      # Create subgroup model
+      subgroup_model <- update(rv$results$model,
+                             subgroup = analysis_data$subgroup,
+                             tau.common = FALSE)
+      
+      # Create forest plot with subgroups
+      forest(subgroup_model,
+             leftcols = c("studlab", "event.e", "n.e", "event.c", "n.c"),
+             leftlabs = c("Study", "Events", "Total", "Events", "Total"),
+             text.random = ifelse(input$method == "FE", 
+                                "Fixed Effect Model",
+                                "Random Effects Model (REML + HK)"),
+             col.diamond = ifelse(input$method == "FE", "black", "navy"),
+             col.predict = "darkred",
+             prediction = input$method != "FE",
+             label.e = "Treatment",
+             label.c = "Control",
+             label.left = paste("Favors", "Control"),
+             label.right = paste("Favors", "Treatment"),
+             subgroup = TRUE,
+             test.subgroup = TRUE,
+             subgroup.name = input$subgroup_col)
+    }
+    
+    # Render subgroup forest plot
+    observeEvent(input$create_subgroup, {
+      output$subgroup_forest_plot <- renderPlot({
+        create_subgroup_plot()
+      })
+    })
+    
+    # Download handlers for Subgroup forest plot
+    output$download_subgroup_svg <- downloadHandler(
+      filename = function() {
+        paste0("subgroup_forest_plot_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".svg")
+      },
+      content = function(file) {
+        svg(file)
+        create_subgroup_plot()
+        dev.off()
+      }
+    )
+    
+    output$download_subgroup_pdf <- downloadHandler(
+      filename = function() {
+        paste0("subgroup_forest_plot_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".pdf")
+      },
+      content = function(file) {
+        pdf(file)
+        create_subgroup_plot()
+        dev.off()
       }
     )
     
