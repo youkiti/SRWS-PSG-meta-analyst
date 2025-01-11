@@ -20,6 +20,8 @@ diagnosticUI <- function(id) {
             "Upload Data",
             fileInput(ns("data_file"), "Choose CSV File",
                      accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+            downloadLink(ns("download_sample"), "Download Sample Data"),
+            tags$br(), tags$br(),
             checkboxInput(ns("header"), "File has header", TRUE),
             
             # Column selection
@@ -109,8 +111,9 @@ diagnosticUI <- function(id) {
 }
 
 # Server Module
-diagnostic <- function(input, output, session) {
-  ns <- session$ns
+diagnostic <- function(id) {
+  moduleServer(id, function(input, output, session) {
+    ns <- session$ns
   
   # Reactive values for storing data and results
   rv <- reactiveValues(
@@ -350,6 +353,17 @@ diagnostic <- function(input, output, session) {
               rownames = FALSE)
   })
   
+  # Sample data download handler
+  output$download_sample <- downloadHandler(
+    filename = function() {
+      "diagnostic_sample.csv"
+    },
+    content = function(file) {
+      file.copy("sample_data/diagnostic.csv", file)
+    }
+  )
+
   # Return reactive results for use in main server
   return(reactive({ rv$results }))
+  })
 }

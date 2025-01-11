@@ -20,6 +20,8 @@ continuousUI <- function(id) {
             "Upload Data",
             fileInput(ns("data_file"), "Choose CSV File",
                      accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+            downloadLink(ns("download_sample"), "Download Sample Data"),
+            tags$br(), tags$br(),
             checkboxInput(ns("header"), "File has header", TRUE),
             
             # Column selection
@@ -99,8 +101,9 @@ continuousUI <- function(id) {
 }
 
 # Server Module
-continuous <- function(input, output, session) {
-  ns <- session$ns
+continuous <- function(id) {
+  moduleServer(id, function(input, output, session) {
+    ns <- session$ns
   
   # Reactive values for storing data and results
   rv <- reactiveValues(
@@ -175,22 +178,25 @@ continuous <- function(input, output, session) {
            "Missing required columns in data")
     )
     
-    # Perform meta-analysis using meta package
+    # Calculate effect sizes and variances
     tryCatch({
-      model <- metacont(
-        n.e = rv$data$n_treat,
-        mean.e = rv$data$mean_treat,
-        sd.e = rv$data$sd_treat,
-        n.c = rv$data$n_ctrl,
-        mean.c = rv$data$mean_ctrl,
-        sd.c = rv$data$sd_ctrl,
-        studlab = rv$data$study,
-        sm = input$effect_measure,
-        method = input$method,
-        method.tau = "REML",
-        level = input$conf_level,
-        level.comb = input$conf_level
-      )
+      # Calculate mean differences and standard errors
+      yi <- rv$data$mean_treat - rv$data$mean_ctrl
+      
+      # Calculate pooled SD for each study
+      n1 <- rv$data$n_treat
+      n2 <- rv$data$n_ctrl
+      sd1 <- rv$data$sd_treat
+      sd2 <- rv$data$sd_ctrl
+      
+      # Calculate variance for each study
+      vi <- (sd1^2/n1 + sd2^2/n2)
+      
+      # Perform random effects meta-analysis
+      model <- rma.uni(yi = yi, vi = vi, method = "REML")
+      
+      # Calculate prediction interval
+      pred <- predict(model, level = input$conf_level, addpred = TRUE)
       
       rv$results <- model
       
@@ -207,15 +213,18 @@ continuous <- function(input, output, session) {
     req(rv$results)
     
     summary_data <- data.frame(
-      Measure = c("Effect Size", "95% CI", "p-value", "I²", "τ²"),
+      Measure = c("Effect Size", "95% CI", "95% PI", "p-value", "I²", "τ²"),
       Value = c(
-        sprintf("%.3f", rv$results$TE.random),
+        sprintf("%.3f", model$b),
         sprintf("%.3f to %.3f", 
-                rv$results$lower.random,
-                rv$results$upper.random),
-        sprintf("%.4f", rv$results$pval.random),
-        sprintf("%.1f%%", rv$results$I2),
-        sprintf("%.3f", rv$results$tau2)
+                model$ci.lb,
+                model$ci.ub),
+        sprintf("%.3f to %.3f",
+                pred$pi.lb,
+                pred$pi.ub),
+        sprintf("%.4f", model$pval),
+        sprintf("%.1f%%", model$I2),
+        sprintf("%.3f", model$tau2)
       )
     )
     
@@ -230,9 +239,12 @@ continuous <- function(input, output, session) {
   # Render forest plot
   output$forest_plot <- renderPlot({
     req(rv$results)
-    forest(rv$results,
-           leftlabs = c("Study", "N", "Mean", "SD"),
-           rightlabs = c("Weight", "Effect (95% CI)"),
+    # Create forest plot with prediction interval
+    forest(model,
+           slab = rv$data$study,
+           addpred = TRUE,
+           header = "Study",
+           mlab = "Random Effects Model",
            fontsize = 1)
   })
   
@@ -248,15 +260,26 @@ continuous <- function(input, output, session) {
     data.frame(
       Statistic = c("Q", "df", "p-value", "I²", "τ²"),
       Value = c(
-        sprintf("%.2f", rv$results$Q),
-        rv$results$df.Q,
-        sprintf("%.4f", rv$results$pval.Q),
-        sprintf("%.1f%%", rv$results$I2),
-        sprintf("%.3f", rv$results$tau2)
+        sprintf("%.2f", model$QE),
+        model$k - 1,
+        sprintf("%.4f", model$QEp),
+        sprintf("%.1f%%", model$I2),
+        sprintf("%.3f", model$tau2)
       )
     )
   })
   
+  # Sample data download handler
+  output$download_sample <- downloadHandler(
+    filename = function() {
+      "continuous_sample.csv"
+    },
+    content = function(file) {
+      file.copy("sample_data/continuous.csv", file)
+    }
+  )
+
   # Return reactive results for use in main server
   return(reactive({ rv$results }))
+  })
 }

@@ -1,0 +1,257 @@
+
+R version 4.4.1 (2024-06-14 ucrt) -- "Race for Your Life"
+Copyright (C) 2024 The R Foundation for Statistical Computing
+Platform: x86_64-w64-mingw32/x64
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # Simple package installation script
+> install.packages(c(
++   "shiny",
++   "shinydashboard",
++   "shinyjs",
++   "DT",
++   "metafor",
++   "meta",
++   "forestplot",
++   "ggplot2",
++   "dplyr",
++   "tidyr"
++ ), repos = "https://cran.rstudio.com/")
+Installing packages into 'C:/Users/youki/AppData/Local/R/win-library/4.4'
+(as 'lib' is unspecified)
+also installing the dependencies 'httpuv', 'sourcetools', 'later', 'promises', 'crosstalk', 'metadat', 'mathjaxr', 'pbapply', 'CompQuadForm'
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/httpuv_1.6.15.zip'
+Content type 'application/zip' length 1000056 bytes (976 KB)
+==================================================
+downloaded 976 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/sourcetools_0.1.7-1.zip'
+Content type 'application/zip' length 128146 bytes (125 KB)
+==================================================
+downloaded 125 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/later_1.4.1.zip'
+Content type 'application/zip' length 468102 bytes (457 KB)
+==================================================
+downloaded 457 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/promises_1.3.2.zip'
+Content type 'application/zip' length 2016459 bytes (1.9 MB)
+==================================================
+downloaded 1.9 MB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/crosstalk_1.2.1.zip'
+Content type 'application/zip' length 416858 bytes (407 KB)
+==================================================
+downloaded 407 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/metadat_1.2-0.zip'
+Content type 'application/zip' length 860377 bytes (840 KB)
+==================================================
+downloaded 840 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/mathjaxr_1.6-0.zip'
+Content type 'application/zip' length 971384 bytes (948 KB)
+==================================================
+downloaded 948 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/pbapply_1.7-2.zip'
+Content type 'application/zip' length 102521 bytes (100 KB)
+==================================================
+downloaded 100 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/CompQuadForm_1.4.3.zip'
+Content type 'application/zip' length 93650 bytes (91 KB)
+==================================================
+downloaded 91 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/shiny_1.10.0.zip'
+Content type 'application/zip' length 5101465 bytes (4.9 MB)
+==================================================
+downloaded 4.9 MB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/shinydashboard_0.7.2.zip'
+Content type 'application/zip' length 337238 bytes (329 KB)
+==================================================
+downloaded 329 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/shinyjs_2.1.0.zip'
+Content type 'application/zip' length 1112061 bytes (1.1 MB)
+==================================================
+downloaded 1.1 MB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/DT_0.33.zip'
+Content type 'application/zip' length 2027963 bytes (1.9 MB)
+==================================================
+downloaded 1.9 MB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/metafor_4.6-0.zip'
+Content type 'application/zip' length 5044173 bytes (4.8 MB)
+==================================================
+downloaded 4.8 MB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/meta_8.0-1.zip'
+Content type 'application/zip' length 2544763 bytes (2.4 MB)
+==================================================
+downloaded 2.4 MB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/forestplot_3.1.6.zip'
+Content type 'application/zip' length 743365 bytes (725 KB)
+==================================================
+downloaded 725 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/ggplot2_3.5.1.zip'
+Content type 'application/zip' length 5022226 bytes (4.8 MB)
+==================================================
+downloaded 4.8 MB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/dplyr_1.1.4.zip'
+Content type 'application/zip' length 1588196 bytes (1.5 MB)
+==================================================
+downloaded 1.5 MB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/tidyr_1.3.1.zip'
+Content type 'application/zip' length 1273347 bytes (1.2 MB)
+==================================================
+downloaded 1.2 MB
+
+package 'httpuv' successfully unpacked and MD5 sums checked
+package 'sourcetools' successfully unpacked and MD5 sums checked
+package 'later' successfully unpacked and MD5 sums checked
+package 'promises' successfully unpacked and MD5 sums checked
+package 'crosstalk' successfully unpacked and MD5 sums checked
+package 'metadat' successfully unpacked and MD5 sums checked
+package 'mathjaxr' successfully unpacked and MD5 sums checked
+package 'pbapply' successfully unpacked and MD5 sums checked
+package 'CompQuadForm' successfully unpacked and MD5 sums checked
+package 'shiny' successfully unpacked and MD5 sums checked
+package 'shinydashboard' successfully unpacked and MD5 sums checked
+package 'shinyjs' successfully unpacked and MD5 sums checked
+package 'DT' successfully unpacked and MD5 sums checked
+package 'metafor' successfully unpacked and MD5 sums checked
+package 'meta' successfully unpacked and MD5 sums checked
+package 'forestplot' successfully unpacked and MD5 sums checked
+package 'ggplot2' successfully unpacked and MD5 sums checked
+package 'dplyr' successfully unpacked and MD5 sums checked
+Warning: cannot remove prior installation of package 'dplyr'
+Warning: restored 'dplyr'
+package 'tidyr' successfully unpacked and MD5 sums checked
+Warning: cannot remove prior installation of package 'tidyr'
+Warning: restored 'tidyr'
+
+The downloaded binary packages are in
+	C:\Users\youki\AppData\Local\Temp\Rtmpo5GLee\downloaded_packages
+Warning messages:
+1: In file.copy(savedcopy, lib, recursive = TRUE) :
+  problem copying C:\Users\youki\AppData\Local\R\win-library\4.4\00LOCK\dplyr\libs\x64\dplyr.dll to C:\Users\youki\AppData\Local\R\win-library\4.4\dplyr\libs\x64\dplyr.dll: Permission denied
+2: In file.copy(savedcopy, lib, recursive = TRUE) :
+  problem copying C:\Users\youki\AppData\Local\R\win-library\4.4\00LOCK\tidyr\libs\x64\tidyr.dll to C:\Users\youki\AppData\Local\R\win-library\4.4\tidyr\libs\x64\tidyr.dll: Permission denied
+> 
+> # Test loading
+> library(shiny)
+Warning message:
+package 'shiny' was built under R version 4.4.2 
+> library(shinydashboard)
+
+Attaching package: 'shinydashboard'
+
+The following object is masked from 'package:graphics':
+
+    box
+
+Warning message:
+package 'shinydashboard' was built under R version 4.4.2 
+> library(shinyjs)
+
+Attaching package: 'shinyjs'
+
+The following object is masked from 'package:shiny':
+
+    runExample
+
+The following objects are masked from 'package:methods':
+
+    removeClass, show
+
+Warning message:
+package 'shinyjs' was built under R version 4.4.2 
+> library(DT)
+
+Attaching package: 'DT'
+
+The following objects are masked from 'package:shiny':
+
+    dataTableOutput, renderDataTable
+
+Warning message:
+package 'DT' was built under R version 4.4.2 
+> library(metafor)
+Loading required package: Matrix
+Loading required package: metadat
+Loading required package: numDeriv
+
+Loading the 'metafor' package (version 4.6-0). For an
+introduction to the package please type: help(metafor)
+
+Warning messages:
+1: package 'metafor' was built under R version 4.4.2 
+2: package 'metadat' was built under R version 4.4.2 
+> library(meta)
+Loading 'meta' package (version 8.0-1).
+Type 'help(meta)' for a brief overview.
+Warning message:
+package 'meta' was built under R version 4.4.2 
+> library(forestplot)
+Loading required package: grid
+Loading required package: checkmate
+Loading required package: abind
+Warning message:
+package 'forestplot' was built under R version 4.4.2 
+> library(ggplot2)
+Warning message:
+package 'ggplot2' was built under R version 4.4.2 
+> library(dplyr)
+
+Attaching package: 'dplyr'
+
+The following objects are masked from 'package:stats':
+
+    filter, lag
+
+The following objects are masked from 'package:base':
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package 'dplyr' was built under R version 4.4.2 
+> library(tidyr)
+
+Attaching package: 'tidyr'
+
+The following objects are masked from 'package:Matrix':
+
+    expand, pack, unpack
+
+Warning message:
+package 'tidyr' was built under R version 4.4.2 
+> 
+> print("All packages installed and loaded successfully!")
+[1] "All packages installed and loaded successfully!"
+> 
+> proc.time()
+   user  system elapsed 
+   4.87    3.79   28.17 

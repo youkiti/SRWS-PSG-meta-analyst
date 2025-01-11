@@ -20,6 +20,8 @@ meta_regUI <- function(id) {
             "Upload Data",
             fileInput(ns("data_file"), "Choose CSV File",
                      accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv")),
+            downloadLink(ns("download_sample"), "Download Sample Data"),
+            tags$br(), tags$br(),
             checkboxInput(ns("header"), "File has header", TRUE),
             
             # Column selection
@@ -120,8 +122,9 @@ meta_regUI <- function(id) {
 }
 
 # Server Module
-meta_reg <- function(input, output, session) {
-  ns <- session$ns
+meta_reg <- function(id) {
+  moduleServer(id, function(input, output, session) {
+    ns <- session$ns
   
   # Reactive values for storing data and results
   rv <- reactiveValues(
@@ -314,6 +317,17 @@ meta_reg <- function(input, output, session) {
            title = "Cook's Distance Plot")
   })
   
+  # Sample data download handler
+  output$download_sample <- downloadHandler(
+    filename = function() {
+      "meta_reg_sample.csv"
+    },
+    content = function(file) {
+      file.copy("sample_data/meta_reg.csv", file)
+    }
+  )
+
   # Return reactive results for use in main server
   return(reactive({ rv$model }))
+  })
 }

@@ -12,8 +12,9 @@ ui <- dashboardPage(
       menuItem("Home", tabName = "home", icon = icon("home")),
       menuItem("Binary Data", tabName = "binary", icon = icon("percentage")),
       menuItem("Continuous Data", tabName = "continuous", icon = icon("chart-line")),
+      menuItem("Survival Analysis", tabName = "survival", icon = icon("heartbeat")),
       menuItem("Diagnostic Data", tabName = "diagnostic", icon = icon("stethoscope")),
-      menuItem("Meta-Regression", tabName = "meta_reg", icon = icon("chart-scatter")),
+      menuItem("Meta-Regression", tabName = "meta_reg", icon = icon("chart-bar")),
       menuItem("About", tabName = "about", icon = icon("info-circle"))
     )
   ),
@@ -88,6 +89,7 @@ ui <- dashboardPage(
       # Analysis tabs
       tabItem(tabName = "binary", binaryUI("binary")),
       tabItem(tabName = "continuous", continuousUI("continuous")),
+      tabItem(tabName = "survival", survivalUI("survival")),
       tabItem(tabName = "diagnostic", diagnosticUI("diagnostic")),
       tabItem(tabName = "meta_reg", meta_regUI("meta_reg")),
       

@@ -5,7 +5,8 @@ server <- function(input, output, session) {
     binary = NULL,
     continuous = NULL,
     diagnostic = NULL,
-    meta_reg = NULL
+    meta_reg = NULL,
+    survival = NULL
   )
   
   # Helper function to create forest plots
@@ -33,10 +34,21 @@ server <- function(input, output, session) {
   }
   
   # Initialize modules
-  results$binary <- callModule(binary, "binary")
-  results$continuous <- callModule(continuous, "continuous")
-  results$diagnostic <- callModule(diagnostic, "diagnostic")
-  results$meta_reg <- callModule(meta_reg, "meta_reg")
+  results$binary <- binary("binary")
+  results$continuous <- continuous("continuous")
+  results$diagnostic <- diagnostic("diagnostic")
+  results$meta_reg <- meta_reg("meta_reg")
+  results$survival <- survivalServer("survival")
+  
+  # Sample data download handlers
+  output$download_survival_sample <- downloadHandler(
+    filename = function() {
+      "survival_sample.csv"
+    },
+    content = function(file) {
+      file.copy("sample_data/survival.csv", file)
+    }
+  )
   
   # Download handlers
   output$download_results <- downloadHandler(
@@ -53,6 +65,7 @@ server <- function(input, output, session) {
   output$forest_plot <- renderPlot({
     # Logic to determine which model to use based on active tab
     model <- switch(input$sidebar_menu,
+                   survival = results$survival,
                    binary = results$binary,
                    continuous = results$continuous,
                    diagnostic = results$diagnostic,
