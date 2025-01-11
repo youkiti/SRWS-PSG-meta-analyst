@@ -176,6 +176,7 @@ binary <- function(input, output, session) {
         studlab = rv$data$study,
         sm = input$effect_measure,
         method = input$method,
+        method.tau = "REML",
         level = input$conf_level,
         level.comb = input$conf_level
       )

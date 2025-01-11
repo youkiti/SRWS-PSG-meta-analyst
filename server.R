@@ -1,4 +1,4 @@
-function(input, output, session) {
+server <- function(input, output, session) {
   
   # Reactive values to store analysis results
   results <- reactiveValues(
@@ -32,17 +32,11 @@ function(input, output, session) {
            contour = c(0.9, 0.95, 0.99))
   }
   
-  # Binary data analysis
-  source("R/binary.R", local = TRUE)
-  
-  # Continuous data analysis
-  source("R/continuous.R", local = TRUE)
-  
-  # Diagnostic data analysis
-  source("R/diagnostic.R", local = TRUE)
-  
-  # Meta-regression analysis
-  source("R/meta_reg.R", local = TRUE)
+  # Initialize modules
+  results$binary <- callModule(binary, "binary")
+  results$continuous <- callModule(continuous, "continuous")
+  results$diagnostic <- callModule(diagnostic, "diagnostic")
+  results$meta_reg <- callModule(meta_reg, "meta_reg")
   
   # Download handlers
   output$download_results <- downloadHandler(

@@ -21,11 +21,12 @@ invisible(lapply(required_packages, library, character.only = TRUE))
 
 # Global variables
 META_METHODS <- c(
-  "Fixed-effect (Mantel-Haenszel)" = "FE.MH",
-  "Fixed-effect (Inverse Variance)" = "FE.IV",
-  "Random-effects (DerSimonian-Laird)" = "RE.DL",
-  "Random-effects (REML)" = "RE.REML",
-  "Random-effects (Empirical Bayes)" = "RE.EB"
+  "Fixed-effect (Inverse Variance)" = "inverse",
+  "Fixed-effect (Mantel-Haenszel)" = "MH",
+  "Random-effects (DerSimonian-Laird)" = "DL",
+  "Random-effects (REML)" = "REML",
+  "Random-effects (Paule-Mandel)" = "PM",
+  "Random-effects (GLMM)" = "GLMM"
 )
 
 # Effect measures for different data types

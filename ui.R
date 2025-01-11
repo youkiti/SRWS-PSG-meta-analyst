@@ -1,4 +1,4 @@
-dashboardPage(
+ui <- dashboardPage(
   skin = "blue",
   
   # Header
@@ -85,11 +85,11 @@ dashboardPage(
         )
       ),
       
-      # Placeholder tabs for other sections
-      tabItem(tabName = "binary", h2("Binary Data Meta-Analysis")),
-      tabItem(tabName = "continuous", h2("Continuous Data Meta-Analysis")),
-      tabItem(tabName = "diagnostic", h2("Diagnostic Data Meta-Analysis")),
-      tabItem(tabName = "meta_reg", h2("Meta-Regression")),
+      # Analysis tabs
+      tabItem(tabName = "binary", binaryUI("binary")),
+      tabItem(tabName = "continuous", continuousUI("continuous")),
+      tabItem(tabName = "diagnostic", diagnosticUI("diagnostic")),
+      tabItem(tabName = "meta_reg", meta_regUI("meta_reg")),
       
       # About tab
       tabItem(
