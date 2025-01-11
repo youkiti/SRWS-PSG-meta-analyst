@@ -1,0 +1,31 @@
+# R specific
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# RStudio specific
+*.Rproj
+.Rproj.user/
+
+# Shiny specific
+rsconnect/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Editor specific
+.vscode/
+.idea/
+
+# Package specific
+*.tar.gz
+*.Rcheck/
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.Renviron
