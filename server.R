@@ -4,7 +4,6 @@ server <- function(input, output, session) {
   results <- reactiveValues(
     binary = NULL,
     continuous = NULL,
-    diagnostic = NULL,
     meta_reg = NULL,
     survival = NULL
   )
@@ -36,7 +35,6 @@ server <- function(input, output, session) {
   # Initialize modules
   results$binary <- binary("binary")
   results$continuous <- continuous("continuous")
-  results$diagnostic <- diagnostic("diagnostic")
   results$meta_reg <- meta_reg("meta_reg")
   results$survival <- survivalServer("survival")
   
@@ -68,7 +66,6 @@ server <- function(input, output, session) {
                    survival = results$survival,
                    binary = results$binary,
                    continuous = results$continuous,
-                   diagnostic = results$diagnostic,
                    meta_reg = results$meta_reg)
     
     create_forest_plot(model, input$effect_measure)
@@ -79,7 +76,6 @@ server <- function(input, output, session) {
     model <- switch(input$sidebar_menu,
                    binary = results$binary,
                    continuous = results$continuous,
-                   diagnostic = results$diagnostic,
                    meta_reg = results$meta_reg)
     
     create_funnel_plot(model)

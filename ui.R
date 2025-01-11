@@ -3,7 +3,7 @@ ui <- dashboardPage(
   
   # Header
   dashboardHeader(
-    title = "Shiny Meta-Analysis"
+    title = "SRWS-PSG-meta-analyst"
   ),
   
   # Sidebar
@@ -13,7 +13,6 @@ ui <- dashboardPage(
       menuItem("Binary Data", tabName = "binary", icon = icon("percentage")),
       menuItem("Continuous Data", tabName = "continuous", icon = icon("chart-line")),
       menuItem("Survival Analysis", tabName = "survival", icon = icon("heartbeat")),
-      menuItem("Diagnostic Data", tabName = "diagnostic", icon = icon("stethoscope")),
       menuItem("Meta-Regression", tabName = "meta_reg", icon = icon("chart-bar")),
       menuItem("About", tabName = "about", icon = icon("info-circle"))
     )
@@ -53,7 +52,6 @@ ui <- dashboardPage(
             tags$ul(
               tags$li(strong("Binary Data:"), "For studies with binary outcomes (e.g., event vs. no event)"),
               tags$li(strong("Continuous Data:"), "For studies with continuous outcomes (e.g., mean differences)"),
-              tags$li(strong("Diagnostic Data:"), "For diagnostic accuracy studies"),
               tags$li(strong("Meta-Regression:"), "For exploring heterogeneity through covariates")
             ),
             p("Select the appropriate analysis type from the sidebar to begin.")
@@ -90,7 +88,6 @@ ui <- dashboardPage(
       tabItem(tabName = "binary", binaryUI("binary")),
       tabItem(tabName = "continuous", continuousUI("continuous")),
       tabItem(tabName = "survival", survivalUI("survival")),
-      tabItem(tabName = "diagnostic", diagnosticUI("diagnostic")),
       tabItem(tabName = "meta_reg", meta_regUI("meta_reg")),
       
       # About tab

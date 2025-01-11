@@ -199,23 +199,61 @@ meta_reg <- function(id) {
       }
     }
     
+    # Check multicollinearity
+    if (length(input$moderators) > 1) {
+      mod_data <- rv$data[, input$moderators, drop = FALSE]
+      cor_matrix <- cor(mod_data[, sapply(mod_data, is.numeric), drop = FALSE])
+      
+      # VIF calculation if more than one numeric moderator
+      numeric_mods <- names(which(sapply(mod_data, is.numeric)))
+      if (length(numeric_mods) > 1) {
+        vif_data <- car::vif(lm(as.formula(paste(input$effect_col, mod_formula)), data = rv$data))
+        rv$diagnostics$vif <- vif_data
+      }
+      
+      rv$diagnostics$cor_matrix <- cor_matrix
+    }
+    
     # Run meta-regression
     tryCatch({
+      # Basic meta-regression model
       model <- rma(yi = rv$data[[input$effect_col]],
                   sei = rv$data[[input$se_col]],
                   mods = as.formula(mod_formula),
                   data = rv$data,
-                  method = input$method)
+                  method = input$method,
+                  test = "knha")
       
       rv$model <- model
       
-      # Calculate diagnostics
-      rv$diagnostics <- list(
-        resid = residuals(model),
-        fitted = fitted(model),
-        cook.d = cooks.distance(model),
-        hat = hatvalues(model)
-      )
+      # Run permutation test
+      rv$diagnostics$permutation <- try(permutest(model, iter = 1000))
+      
+      # Multimodel inference if multiple moderators
+      if (length(input$moderators) > 1) {
+        rv$diagnostics$multimodel <- try(
+          dmetar::multimodel.inference(
+            TE = input$effect_col,
+            seTE = input$se_col,
+            data = rv$data,
+            predictors = input$moderators,
+            method = input$method,
+            test = "knha",
+            eval.criterion = "AICc"
+          )
+        )
+      }
+      
+      # Basic diagnostics
+      rv$diagnostics$resid <- residuals(model)
+      rv$diagnostics$fitted <- fitted(model)
+      rv$diagnostics$cook.d <- cooks.distance(model)
+      rv$diagnostics$hat <- hatvalues(model)
+      rv$diagnostics$influence <- influence(model)
+      
+      # Additional model information
+      rv$diagnostics$i2 <- model$I2
+      rv$diagnostics$r2 <- model$R2
       
     }, error = function(e) {
       showNotification(
@@ -228,7 +266,46 @@ meta_reg <- function(id) {
   # Render model summary
   output$model_summary <- renderPrint({
     req(rv$model)
-    summary(rv$model)
+    
+    # Basic model summary
+    cat("META-REGRESSION ANALYSIS\n")
+    cat("=======================\n\n")
+    print(summary(rv$model))
+    
+    # Multicollinearity results
+    if (!is.null(rv$diagnostics$vif)) {
+      cat("\nVARIANCE INFLATION FACTORS\n")
+      cat("=========================\n")
+      print(rv$diagnostics$vif)
+    }
+    
+    if (!is.null(rv$diagnostics$cor_matrix)) {
+      cat("\nCORRELATION MATRIX OF MODERATORS\n")
+      cat("===============================\n")
+      print(round(rv$diagnostics$cor_matrix, 3))
+    }
+    
+    # Permutation test results
+    if (!is.null(rv$diagnostics$permutation) && !inherits(rv$diagnostics$permutation, "try-error")) {
+      cat("\nPERMUTATION TEST RESULTS\n")
+      cat("=======================\n")
+      print(rv$diagnostics$permutation)
+    }
+    
+    # Multimodel inference results
+    if (!is.null(rv$diagnostics$multimodel) && !inherits(rv$diagnostics$multimodel, "try-error")) {
+      cat("\nMULTIMODEL INFERENCE RESULTS\n")
+      cat("==========================\n")
+      print(rv$diagnostics$multimodel)
+    }
+    
+    # Model fit statistics
+    cat("\nMODEL FIT STATISTICS\n")
+    cat("===================\n")
+    cat(sprintf("I² = %.1f%%\n", rv$diagnostics$i2))
+    if (!is.null(rv$diagnostics$r2)) {
+      cat(sprintf("R² = %.1f%%\n", rv$diagnostics$r2))
+    }
   })
   
   # Render moderator effects table
@@ -258,19 +335,42 @@ meta_reg <- function(id) {
   output$bubble_plot <- renderPlot({
     req(rv$model, input$bubble_mod)
     
-    # Create bubble plot
-    weights <- 1/rv$data[[input$se_col]]^2
-    sizes <- sqrt(weights/max(weights)) * 20
+    # Create enhanced bubble plot
+    bubble_data <- data.frame(
+      x = rv$data[[input$bubble_mod]],
+      y = rv$data[[input$effect_col]],
+      se = rv$data[[input$se_col]],
+      study = rv$data$study
+    )
     
-    ggplot(rv$data, aes_string(x = input$bubble_mod,
-                              y = input$effect_col)) +
-      geom_point(aes(size = sizes), alpha = 0.6) +
-      geom_smooth(method = "lm", formula = y ~ x, se = TRUE) +
+    # Calculate prediction interval
+    pred <- predict(rv$model, newmods = bubble_data$x)
+    
+    # Create plot
+    ggplot(bubble_data, aes(x = x, y = y)) +
+      # Add confidence interval ribbon
+      geom_ribbon(data = data.frame(x = bubble_data$x,
+                                   fit = pred$pred,
+                                   ci.lb = pred$ci.lb,
+                                   ci.ub = pred$ci.ub),
+                 aes(x = x, y = fit, ymin = ci.lb, ymax = ci.ub),
+                 alpha = 0.2) +
+      # Add regression line
+      geom_line(aes(y = pred$pred), color = "blue", size = 1) +
+      # Add points with size based on precision
+      geom_point(aes(size = 1/se^2), alpha = 0.6) +
+      # Add study labels
+      geom_text_repel(aes(label = study), size = 3, box.padding = 0.5) +
+      # Customize theme and labels
       theme_minimal() +
       labs(x = input$bubble_mod,
            y = "Effect Size",
-           size = "Precision") +
-      theme(legend.position = "none")
+           title = "Meta-Regression Bubble Plot",
+           subtitle = paste("Moderator:", input$bubble_mod),
+           caption = "Size of bubbles represents precision (1/SE²)") +
+      theme(legend.position = "none",
+            plot.title = element_text(face = "bold"),
+            plot.subtitle = element_text(face = "italic"))
   })
   
   # Render diagnostic plots

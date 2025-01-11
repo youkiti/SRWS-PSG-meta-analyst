@@ -1,6 +1,6 @@
 # Shiny Meta-Analysis
 
-メタ分析を実行するためのShinyアプリケーション。OpenMeta-Analystの現代的な実装です。
+メタ分析を実行するためのShinyアプリケーション。OpenMeta-Analystのアップデートされた実装です。
 
 ## 機能
 
@@ -11,9 +11,6 @@
 - 連続データのメタ分析
   - 平均差
   - 標準化平均差
-- 診断精度研究のメタ分析
-  - 感度・特異度
-  - 診断オッズ比
 - メタ回帰分析
   - 連続変数による修飾効果
   - カテゴリ変数による修飾効果
@@ -52,7 +49,6 @@ source("app.R")
 
 - `binary.csv`: 二値データのメタ分析用
 - `continuous.csv`: 連続データのメタ分析用
-- `diagnostic.csv`: 診断精度研究のメタ分析用
 - `meta_reg.csv`: メタ回帰分析用
 
 ## 開発環境
@@ -69,4 +65,4 @@ source("app.R")
 
 ## 謝辞
 
-このプロジェクトは[OpenMeta-Analyst](https://github.com/bwallace/OpenMeta-analyst-)をベースに開発されました。
+このプロジェクトは[OpenMeta-Analyst](https://github.com/bwallace/OpenMeta-analyst-)をベースに開発されました。また、実装の一部は[Doing Meta-Analysis with R: A Hands-On Guide](https://github.com/MathiasHarrer/Doing-Meta-Analysis-in-R)を参考にしています。
