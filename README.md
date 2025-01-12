@@ -53,11 +53,32 @@ source("app.R")
 
 ## 開発環境
 
-- R 4.4.1
-- RStudio 2023.12.0
-- Shiny 1.7.5
-- metafor 3.8
-- meta 7.0
+- R 4.3.2 ("Eye Holes")
+- RStudio または VSCode
+- 必要なパッケージ:
+  - shiny
+  - shinydashboard
+  - shinyjs
+  - DT
+  - metafor (4.6.0)
+  - meta (8.0.1)
+  - dmetar
+  - tidyverse
+  - Matrix
+  - numDeriv
+
+## 起動方法
+
+### RStudioの場合
+```r
+library(shiny)
+runApp()
+```
+
+### コマンドラインの場合
+```r
+& 'C:/Program Files/R/R-4.3.2/bin/R.exe' --vanilla -e "source('SRWS-PSG-meta-analyst/global.R'); library(shiny); runApp('SRWS-PSG-meta-analyst')"
+```
 
 ## ライセンス
 
