@@ -174,12 +174,30 @@ meta_reg <- function(id) {
           updateSelectInput(session, "study_col", selected = "study")
           updateSelectInput(session, "effect_col", selected = "effect")
           updateSelectInput(session, "se_col", selected = "se")
+        } else {
+          # Set se_col to "se" if it exists
+          if ("se" %in% names(data)) {
+            updateSelectInput(session, "se_col", selected = "se")
+          }
         }
         
-        # Update column selection choices
+        # Update column selection choices in order
         updateSelectInput(session, "study_col", choices = names(data))
         updateSelectInput(session, "effect_col", choices = names(data)[numeric_cols])
         updateSelectInput(session, "se_col", choices = names(data)[numeric_cols])
+        
+        # Add observer for effect_col changes
+        observeEvent(input$effect_col, {
+          req(input$effect_col)
+          numeric_names <- names(data)[numeric_cols]
+          effect_idx <- match(input$effect_col, numeric_names)
+          if (!is.na(effect_idx) && effect_idx < length(numeric_names)) {
+            updateSelectInput(session, "se_col", 
+                            choices = names(data)[numeric_cols],
+                            selected = numeric_names[effect_idx + 1])
+          }
+        }, ignoreInit = TRUE)
+        
         updateSelectizeInput(session, "moderators", choices = names(data))
         
         rv$data <- data
@@ -454,60 +472,27 @@ meta_reg <- function(id) {
     output$model_summary_multi <- renderPrint({
       req(rv$model_summary)
       if (length(input$moderators) > 1) {
+        # Print model summary
+        print(rv$model_summary)
         
-        summary_data <- data.frame(
-          Measure = character(),
-          Value   = character(),
-          stringsAsFactors = FALSE
-        )
-        
-        summary_data <- rbind(
-          summary_data,
-          data.frame(
-            Measure = c("Method", 
-                        "Number of Studies",
-                        "Test of Moderators",
-                        "Model p-value",
-                        "τ²",
-                        "I²",
-                        "R²"),
-            Value = c(
-              input$method,
-              as.character(rv$model$k),
-              sprintf("F(%d, %d) = %.2f", 
-                      rv$model_summary$dfs[1],
-                      rv$model_summary$dfs[2],
-                      rv$model_summary$QM),
-              sprintf("%.4f", rv$model_summary$QMp),
-              sprintf("%.3f", rv$model$tau2),
-              sprintf("%.1f%%", rv$diagnostics$i2),
-              sprintf("%.1f%%", rv$diagnostics$r2)
-            )
-          )
-        )
+        # Print additional statistics
+        cat("\n--- Additional Model Statistics ---\n")
+        cat(sprintf("I² = %.1f%%\n", rv$diagnostics$i2))
+        cat(sprintf("R² = %.1f%%\n", rv$diagnostics$r2))
         
         # VIF
         if (!is.null(rv$diagnostics$vif)) {
-          vif_data <- data.frame(
-            Measure = paste("VIF:", names(rv$diagnostics$vif)),
-            Value   = sprintf("%.2f", rv$diagnostics$vif)
-          )
-          summary_data <- rbind(summary_data, vif_data)
+          cat("\n--- Variance Inflation Factors ---\n")
+          for (name in names(rv$diagnostics$vif)) {
+            cat(sprintf("%s: %.2f\n", name, rv$diagnostics$vif[name]))
+          }
         }
         
         # Permutation test
         if (!is.null(rv$diagnostics$permutation)) {
-          perm_data <- data.frame(
-            Measure = "Permutation Test p-value",
-            Value   = sprintf("%.4f", rv$diagnostics$permutation$pval)
-          )
-          summary_data <- rbind(summary_data, perm_data)
+          cat("\n--- Permutation Test Results ---\n")
+          cat(sprintf("p-value = %.4f\n", rv$diagnostics$permutation$pval))
         }
-        
-        datatable(summary_data,
-                  options = list(dom = 't', pageLength = -1, ordering = FALSE, searching = FALSE),
-                  rownames = FALSE) %>%
-          formatStyle('Measure', fontWeight = 'bold')
       }
     })
     
@@ -519,9 +504,8 @@ meta_reg <- function(id) {
       if (length(input$moderators) == 1) {
         box(
           width = 6,
-          title = "Bubble Plot",
+          title = paste("Bubble Plot - Moderator:", input$moderators),
           status = "info",
-          selectInput(ns("bubble_mod"), "Select Moderator", choices = input$moderators),
           plotOutput(ns("bubble_plot_single"))
         )
       } else {
@@ -541,10 +525,10 @@ meta_reg <- function(id) {
     # Single moderator bubble plot
     #---------------------------
     output$bubble_plot_single <- renderPlot({
-      req(rv$model, input$bubble_mod)
+      req(rv$model, input$moderators)
       if (length(input$moderators) == 1) {
         bubble_data <- data.frame(
-          x     = rv$data[[input$bubble_mod]],
+          x     = rv$data[[input$moderators]],
           y     = rv$data[[input$effect_col]],
           se    = rv$data[[input$se_col]],
           study = rv$data[[input$study_col]]
@@ -564,7 +548,7 @@ meta_reg <- function(id) {
           geom_point(aes(size = 1/se^2), alpha = 0.6) +
           ggrepel::geom_text_repel(aes(label = study), size = 3, box.padding = 0.5) +
           theme_minimal() +
-          labs(x = input$bubble_mod,
+          labs(x = input$moderators,
                y = "Effect Size",
                title = "Meta-Regression Bubble Plot",
                subtitle = paste("Moderator:", input$bubble_mod),
