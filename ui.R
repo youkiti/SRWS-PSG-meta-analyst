@@ -101,6 +101,7 @@ ui <- dashboardPage(
             status = "primary",
             p("This is a modern Shiny implementation of OpenMeta-Analyst, originally developed by Byron Wallace and colleagues."),
             p("The original OpenMeta-Analyst software was designed as a cross-platform desktop application for conducting meta-analyses. This web-based version maintains the core functionality while providing a more accessible and modern interface."),
+            p("The source code for this application is available on ", tags$a(href="https://github.com/youkiti/SRWS-PSG-meta-analyst", "GitHub", target="_blank"), "."),
             h4("References"),
             tags$ul(
               tags$li("Wallace, B. C., et al. (2012). OpenMeta-Analyst: Cross-platform software for advanced meta-analysis. Systematic Reviews, 1(1), 1-1."),
