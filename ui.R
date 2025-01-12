@@ -3,7 +3,7 @@ ui <- dashboardPage(
   
   # Header
   dashboardHeader(
-    title = "SRWS-PSG-meta-analyst"
+    title = span("SRWS-PSG-meta-analyst", style = "font-size: 14px;")
   ),
   
   # Sidebar
@@ -52,6 +52,7 @@ ui <- dashboardPage(
             tags$ul(
               tags$li(strong("Binary Data:"), "For studies with binary outcomes (e.g., event vs. no event)"),
               tags$li(strong("Continuous Data:"), "For studies with continuous outcomes (e.g., mean differences)"),
+              tags$li(strong("Survival Analysis:"), "For studies with time-to-event outcomes (e.g., hazard ratios)"),
               tags$li(strong("Meta-Regression:"), "For exploring heterogeneity through covariates")
             ),
             p("Select the appropriate analysis type from the sidebar to begin.")
