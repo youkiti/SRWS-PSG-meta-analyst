@@ -9,7 +9,8 @@ required_packages <- c(
   "forestplot",
   "ggplot2",
   "dplyr",
-  "tidyr"
+  "tidyr",
+  "dmetar"
 )
 
 # Install missing packages
